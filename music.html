@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- //vue CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <!-- axios CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        div {
+            width: 100%;
+            background: url('https://cn.bing.com/th?id=OHR.QiXiFestival2022_ZH-CN9662808484_1920x1080.jpg&rf=LaDigue_1920x1080.jpg');
+            background-size: cover;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            list-style: none;
+            user-select: none;
+        }
+
+        /* ul::before{
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: inherit;
+            box-shadow: 0 0 200px rgba(255, 255, 255, 0.25);
+            filter: blur(5px);
+        } */
+        ul {
+            width: 400px;
+            height: 600px;
+            /* border: 1px solid black; */
+            margin: 20px auto;
+            border-radius: 15px;
+            overflow-y: auto;
+            background: inherit;
+            position: relative;
+            /* filter: blur(5px); */
+            backdrop-filter: blur(10px);
+            transition:all 1s;
+        }
+
+        ul li {
+            text-align: center;
+            line-height: 40px;
+            color: white;
+        }
+
+        /* //滚动条 */
+        ul::-webkit-scrollbar {
+            width: 4px;
+            height: 1px;
+        }
+
+        ul::-webkit-scrollbar-thumb {
+            background-color: pink;
+        }
+        ul .choose{
+            /* background: pink; */
+            font-size: 20px;
+            font-weight: bold;
+            color: red;
+            
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <ul ref="lyric">
+            <li :class="{choose: (index==lyricIndex)}" v-for="(item,key,index) in this.currentMUsicLyric">{{item}}</li>
+        </ul>
+        <audio :src="music" controls @timeupdate="fun"></audio>
+    </div>
+</body>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            music: [],
+            lyric: '',
+            currentMUsicLyric: '',
+            lyricIndex: 0,
+            value: 0
+        },
+        mounted() {
+            axios.get('http://www.cimns.com/netcloudmusic/search?keywords=把回忆拼好给你')
+                .then((response) => {
+                    let id = response.data.result.songs[0].id;
+                    // this.music = response.data.result.songs[0];
+                    // console.log(this.music);
+                    return id
+                }).then((id) => {
+                    axios.get('http://www.cimns.com/netcloudmusic/song/url?id=' + id)
+                        .then((response) => {
+                            // console.log(response);
+                            this.music = response.data.data[0].url;
+                            // console.log(this.music);
+                        })
+                    axios.get('http://www.cimns.com/netcloudmusic/lyric?id=' + id)
+                        .then((r) => {
+                            // console.log(r);
+                            this.lyric = r.data.lrc.lyric
+                            // this.music = response.data.data[0].url;
+                            // console.log(this.lyric);
+                            this.lyc()
+                        })
+                })
+
+        },
+        methods: {
+            fun(ev) {
+                // console.log(ev.target.currentTime);
+                this.value =parseInt(ev.target.currentTime);
+            },
+            lyc() {
+                // 处理歌词，转化成key为时间，value为歌词的对象
+                let lyricArr = this.lyric.split('['); // 先以[进行分割
+                let lrcObj = {};
+                lyricArr.forEach(item => {
+                    let arr = item.split(']'); // 再分割右括号
+                    // console.log(item);
+                    // 时间换算成秒
+                    let m = parseInt(arr[0].split(':')[0])
+                    let s = parseInt(arr[0].split(':')[1])
+                    arr[0] = m * 60 + s;
+                    if (arr[1] != '\n') { // 去除歌词中的换行符
+                        lrcObj[arr[0]] = arr[1];
+                    }
+                })
+                // 存储数据
+                this.currentMUsicLyric = lrcObj;
+            }
+        },
+        watch: {
+            // 使用watch监听当前歌曲进度value的变化处理歌词位置
+            value() {
+                // console.log('触发');
+                let i = 0
+                // 循环歌词对象
+                for (let key in this.currentMUsicLyric) {
+                    // console.log(this.value);
+                    // key表示歌词对象中的时间，如果key等于歌曲进度value，改变当前歌词进度		lyricIndex
+                    if (+key == this.value) {
+                        console.log(i);
+                        this.lyricIndex = i;
+                        // 当歌词进度大于5，即播放到了第5句歌词，开始滚动
+                        // if (i > 5) {
+                        //    this.$refs.lyric.scrollTop = 40 * (i - 5);
+		this.$refs.lyric.scrollTo({top: 40 * (i - 5), behavior: 'smooth'})
+                    }
+                    i++;
+                }
+            }
+        }
+    })
+</script>
+
+</html>
